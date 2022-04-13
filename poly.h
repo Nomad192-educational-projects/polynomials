@@ -1,11 +1,9 @@
-#ifndef POLY_POLY_H
-#define POLY_POLY_H
+#ifndef POLY_H
+#define POLY_H
 
 #include <stdio.h>
-#include <stdlib.h>
 
 #define POLY_TYPE double
-#define SP ".0lf"
 
 typedef struct poly_t
 {

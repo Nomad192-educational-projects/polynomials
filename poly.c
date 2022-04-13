@@ -1,9 +1,14 @@
 #include "poly.h"
+#include <stdlib.h>
+
+#define SP ".0lf"
+#define NEU 0.0
+#define OPPOSITE -1.0
 
 static POLY_TYPE my_abs(POLY_TYPE a)
 {
-    if (a < 0)
-        a *= -1.0;
+    if (a < NEU)
+        a *= OPPOSITE;
     return a;
 }
 
@@ -23,12 +28,12 @@ void print_poly(Poly the_poly)
     while (i--)
         if(my_abs(the_poly.data[i]) > 6E-7 || the_poly.n == 1 || i == 0)
         {
-            print_monomial((the_poly.data[i] >= 0.0 ? "" : "- "), the_poly.data[i],  i);
+            print_monomial((the_poly.data[i] >= NEU ? "" : "- "), the_poly.data[i],  i);
             break;
         }
     while (i--)
         if(my_abs(the_poly.data[i]) > 6E-7)
-            print_monomial((the_poly.data[i] >= 0.0 ? " + " : " - "), the_poly.data[i], i);
+            print_monomial((the_poly.data[i] >= NEU ? " + " : " - "), the_poly.data[i], i);
     printf("\n");
 }
 
@@ -45,7 +50,7 @@ static POLY_TYPE sub(POLY_TYPE first, POLY_TYPE second)
     return first - second;
 }
 
-static Poly op_poly(POLY_TYPE (*f)(POLY_TYPE, POLY_TYPE), Poly first, Poly second)
+static Poly op(POLY_TYPE (*f)(POLY_TYPE, POLY_TYPE), Poly first, Poly second)
 {
     const size_t poly_res_len = MAX(first.n, second.n);
     Poly result = {poly_res_len, malloc(poly_res_len * sizeof(POLY_TYPE))};
@@ -60,7 +65,7 @@ static Poly op_poly(POLY_TYPE (*f)(POLY_TYPE, POLY_TYPE), Poly first, Poly secon
     if (first.n > second.n)
         for(; i < poly_res_len; i++)
             result.data[i] = first.data[i];
-    else
+    else if (first.n < second.n)
         for(; i < poly_res_len; i++)
             result.data[i] =  second.data[i];
 
@@ -69,23 +74,23 @@ static Poly op_poly(POLY_TYPE (*f)(POLY_TYPE, POLY_TYPE), Poly first, Poly secon
 
 Poly add_poly(Poly first, Poly second)
 {
-    return op_poly(add, first, second);
+    return op(add, first, second);
 }
 
 Poly sub_poly(Poly first, Poly second)
 {
-    return op_poly(sub, first, second);
+    return op(sub, first, second);
 }
 
 Poly mul_poly (Poly first, Poly second)
 {
     const size_t poly_res_len = (first.n + second.n) - 1;
-    Poly result = {poly_res_len, malloc(poly_res_len * sizeof(POLY_TYPE))};
+    Poly result = {poly_res_len, (POLY_TYPE *)malloc(poly_res_len * sizeof(POLY_TYPE))};
     if(result.data == NULL)
         return result;
 
     for(size_t i = 0; i < poly_res_len; i++)
-        result.data[i] = 0;
+        result.data[i] = NEU;
 
     for(size_t i = 0; i < first.n; i++)
         for(size_t j = 0; j < second.n; j++)
@@ -105,8 +110,8 @@ Res_Dvn dvn_poly (Poly divisible, Poly divider)
     Poly result;
     Poly remains;
     {
-        size_t len_res = (divisible.n - divider.n + 1);
-        size_t len_rem = divisible.n;
+        const size_t len_res = (divisible.n - divider.n + 1);
+        const size_t len_rem = divisible.n;
         Poly buf_res = {len_res, (POLY_TYPE *)malloc(len_res * sizeof(POLY_TYPE))};
         if(buf_res.data == NULL)
             return res;
@@ -134,7 +139,7 @@ Res_Dvn dvn_poly (Poly divisible, Poly divider)
     {
         POLY_TYPE ratio = remains.data[remains.n - n - 1] / divider.data[divider.n - 1];
 
-        remains.data[remains.n - n - 1] = 0.0;
+        remains.data[remains.n - n - 1] = NEU;
 
         for(size_t i = remains.n - n - 1, j = divider.n - 1; i-- && j--;)
         {
@@ -147,7 +152,7 @@ Res_Dvn dvn_poly (Poly divisible, Poly divider)
         //print_poly(res_dvn.remains);
         if(divisible.n - n < divider.n)
         {
-            POLY_TYPE *new_data = realloc(remains.data, (remains.n - n) * sizeof(POLY_TYPE));
+            POLY_TYPE *new_data = (POLY_TYPE *)realloc(remains.data, (remains.n - n) * sizeof(POLY_TYPE));
             if (new_data == NULL)
             {
                 free(result.data);
