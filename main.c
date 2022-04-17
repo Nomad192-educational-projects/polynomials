@@ -23,7 +23,7 @@ int main() {
         first = ini_poly(sizeof(ini_list_1)/sizeof(ini_list_1[0]), ini_list_1);
         if (first.data == NULL)
             goto exit;
-        POLY_TYPE ini_list_2[] = {1, 3};
+        POLY_TYPE ini_list_2[] = {0, 0, 0, 1, 3};
         second = ini_poly(sizeof(ini_list_2)/sizeof(ini_list_2[0]), ini_list_2);
         if (second.data == NULL)
             goto exit;
