@@ -1,9 +1,10 @@
 #include "poly.h"
 #include <stdlib.h>
 
-#define SP ".0lf"
+#define SP ".3g"    //.0lf
 #define NEU 0.0
 #define OPPOSITE -1.0
+#define EPS 6E-7
 
 static POLY_TYPE my_abs(POLY_TYPE a)
 {
@@ -26,13 +27,13 @@ void print_poly(Poly the_poly)
 {
     size_t i = the_poly.n;
     while (i--)
-        if(my_abs(the_poly.data[i]) > 6E-7 || the_poly.n == 1 || i == 0)
+        if(my_abs(the_poly.data[i]) > EPS || the_poly.n == 1 || i == 0)
         {
             print_monomial((the_poly.data[i] >= NEU ? "" : "- "), the_poly.data[i],  i);
             break;
         }
     while (i--)
-        if(my_abs(the_poly.data[i]) > 6E-7)
+        if(my_abs(the_poly.data[i]) > EPS)
             print_monomial((the_poly.data[i] >= NEU ? " + " : " - "), the_poly.data[i], i);
     printf("\n");
 }
@@ -101,15 +102,31 @@ Poly mul_poly (Poly first, Poly second)
 
 static _Bool Eq(double a, double b)
 {
-    return (my_abs(a - b) <= MAX(my_abs(a), my_abs(b)) * 6E-7);
+    return (my_abs(a - b) <= MAX(my_abs(a), my_abs(b)) * EPS);
 }
 
 Res_Dvn dvn_poly (Poly divisible, Poly divider)
 {
     Res_Dvn res = {{0, NULL}, {0, NULL}};
+
     Poly result;
     Poly remains;
     {
+        size_t non_zero = divider.n;
+        while (--non_zero)
+            if(my_abs(divider.data[non_zero]) > EPS)
+                break;
+        if(my_abs(divider.data[non_zero]) < EPS)
+            return res;
+        POLY_TYPE *new_data = (POLY_TYPE *)realloc(divider.data, (non_zero + 1) * sizeof(POLY_TYPE));
+        if (new_data == NULL)
+        {
+            return res;
+        }
+        divider.data = new_data;
+        divider.n = non_zero + 1;
+
+
         const size_t len_res = (divisible.n - divider.n + 1);
         const size_t len_rem = divisible.n;
         Poly buf_res = {len_res, (POLY_TYPE *)malloc(len_res * sizeof(POLY_TYPE))};
@@ -131,28 +148,25 @@ Res_Dvn dvn_poly (Poly divisible, Poly divider)
             result.data[i] = 0;
     }
 
-
-
-    size_t n = 0;
-
+    size_t step = 0;
     while(1)
     {
-        POLY_TYPE ratio = remains.data[remains.n - n - 1] / divider.data[divider.n - 1];
+        POLY_TYPE ratio = remains.data[remains.n - step - 1] / divider.data[divider.n - 1];
 
-        remains.data[remains.n - n - 1] = NEU;
+        remains.data[remains.n - step - 1] = NEU;
 
-        for(size_t i = remains.n - n - 1, j = divider.n - 1; i-- && j--;)
+        for(size_t i = remains.n - step - 1, j = divider.n - 1; i-- && j--;)
         {
             if(Eq(remains.data[i], divider.data[j] * ratio))
-                n++;
+                step++;
             remains.data[i] -= divider.data[j] * ratio;
         }
-        result.data[remains.n - n - divider.n] = ratio;
-        n++;
+        result.data[remains.n - step - divider.n] = ratio;
+        step++;
         //print_poly(res_dvn.remains);
-        if(divisible.n - n < divider.n)
+        if(divisible.n - step < divider.n)
         {
-            POLY_TYPE *new_data = (POLY_TYPE *)realloc(remains.data, (remains.n - n) * sizeof(POLY_TYPE));
+            POLY_TYPE *new_data = (POLY_TYPE *)realloc(remains.data, (remains.n - step) * sizeof(POLY_TYPE));
             if (new_data == NULL)
             {
                 free(result.data);
@@ -160,7 +174,7 @@ Res_Dvn dvn_poly (Poly divisible, Poly divider)
                 return res;
             }
             remains.data = new_data;
-            remains.n -= n;
+            remains.n -= step;
             //print_poly(res_dvn.remains);
 
             res.result = result;
